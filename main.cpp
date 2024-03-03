@@ -12,22 +12,47 @@
 
 #include <iostream>
 #include "struct.h"
-#include <string>
-#include <fstream>
 #include <vector>
-#include <cstdlib>
-#include <ctime>
+#include <thread>
+
 
 using namespace std;
 using namespace chrono;
 
+
+
+void loadingAnimation() {
+    for (int i = 0; i < 3; ++i) {
+        cout << "Loading.";
+        this_thread::sleep_for(chrono::milliseconds(250));
+        cout << "\r";
+        cout.flush();
+
+        cout << "Loading..";
+        this_thread::sleep_for(chrono::milliseconds(250));
+        cout << "\r";
+        cout.flush();
+
+        cout << "Loading...";
+        this_thread::sleep_for(chrono::milliseconds(250));
+        cout << "\r";
+        cout.flush();
+    }
+}
+
+
+
 time_t getTimeInput(const string& prompt) {
     struct tm timeinfo = {0};
     string input;
-
+    cin.clear();
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
     while (true) {
-        cout << "Enter the date and time (YYYY MM DD HH MM SS): ";
+        cout << "Enter the date and time (YYYY MM DD HH MM SS) (example 2024 10 10 12 30 45): ";
+
+        // Read the entire line of input
         getline(cin, input);
+        cout << "Input received: " << input << endl; // Debugging output
 
         istringstream ss(input);
         ss >> timeinfo.tm_year >> timeinfo.tm_mon >> timeinfo.tm_mday
@@ -93,15 +118,22 @@ string getStringInput(const string& prompt) {
     return value;
 }
 
+string formatTime(time_t t) {
+    char buffer[80]; // Buffer to hold formatted time
+    tm* localTime = localtime(&t);
+    strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", localTime); // Format time
+    return buffer;
+}
+
 void DatabaseManagement(const string& filename, const string& DatabaseType);
 void localDatabase();
 
 
 void benchmarkMode();
-Monster benchmarkGenerationMonster();
 
 
-void demonstrationMode();
+
+void demoMode();
 
 
 
@@ -135,51 +167,45 @@ int main() {
                     filename = "database.bin";
                     DatabaseManagement(filename, binDatabase);
                     break;
-//                default:
-//                    cerr << "Error! You are allowed to choose numbers within 1-3\n";
-//                    break;
             }
             break;
         case 2:
-            demonstrationMode();
+            demoMode();
             break;
         case 3:
             benchmarkMode();
             break;
-//        default:
-//            cerr << "Error! You are allowed to choose numbers within 1-3\n";
-//            break;
     }
 }
 
 void loadData(const string& source, vector<Monster>& storage, const string& DatabaseType) {
-    ios_base::openmode fileMode = DatabaseType == "binary" ? ios::in : ios::in | ios::binary ;
-    ifstream dataFile(source, fileMode);
-    storage.clear();
+    ofstream clearFile(source, ios::trunc);
+    clearFile.close();
+    ios_base::openmode fileMode = DatabaseType == txtDatabase ? ios::out : ios::out | ios::binary;
+    ofstream dataFile(source, fileMode);
 
-    if (!dataFile.is_open()) {
-        cerr << "\n### Error: Failed to access the specified file! ###\n";
+    if (!dataFile.is_open())
+    {
+        cerr << "\n### Error opening the file '" << source << "'! ###\n";
         return;
     }
 
-    Monster unit;
-
-    while (dataFile >> unit.id >> unit.name  >> unit.health
-                    >> unit.attack  >> unit.specialAttackChance  >> unit.specialAttackType
-                    >> unit.appearanceTime)
+    for (const Monster& monster : storage)
     {
-        storage.push_back(unit);
+        dataFile << monster.id << ' ' << monster.name << ' ' << monster.health << ' '
+                 << monster.attack << ' ' << monster.specialAttackChance << ' '
+                 << monster.specialAttackType << ' ' << monster.appearanceTime << '\n';
     }
 
     dataFile.close();
 }
 
-void insertMonster(vector<Monster>& monsterCollection, bool isDemoMode, bool isBenchmark) {
+
+void insertMonster(vector<Monster>& monsterCollection, bool isUserMode) {
     Monster newMonster;
-    if (isDemoMode) {
+    if (isUserMode) {
         newMonster.initializeFromUserInput();
-    }
-    if (isBenchmark) {
+    } else {
         newMonster = benchmarkGenerationMonster();
     }
 
@@ -190,30 +216,29 @@ void insertMonster(vector<Monster>& monsterCollection, bool isDemoMode, bool isB
         newMonster.id = monsterCollection.back().id + 1;
     }
     monsterCollection.push_back(newMonster);
+    newMonster.printMonsterData();
 }
 
 
-void storeData(const string& filename,  vector<Monster>& monsterData, const string& DatabaseType) {
-    ios_base::openmode fileMode = DatabaseType == "txt" ? ios::out : ios::out | ios::binary ;
+void storeData(const string& filename, vector<Monster>& monsterData, const string& DatabaseType) {
+    ios_base::openmode fileMode = (DatabaseType == "txt") ? ios::out : ios::out | ios::binary;
     ofstream outputFile(filename, fileMode);
-    monsterData.clear();
 
     if (!outputFile.is_open()) {
         cerr << "\n### Error: Unable to open the file '" << filename << "'! ###\n";
         return;
     }
 
-    string dataLine;
-    for (size_t i = 0; i < monsterData.size(); ++i) {
-        dataLine += to_string(monsterData[i].id) + ' ' + monsterData[i].name + ' ' + to_string(monsterData[i].health) + ' ';
-        dataLine += to_string(monsterData[i].attack) + ' ' + to_string(monsterData[i].specialAttackChance) + ' ' + monsterData[i].specialAttackType;
-        dataLine += ' ' + to_string(monsterData[i].appearanceTime) + '\n';
-        outputFile << dataLine;
-        dataLine.clear();
+    for (const Monster& monster : monsterData) {
+        formatTime(monster.appearanceTime);
+        outputFile << monster.id << ' ' << monster.name << ' ' << monster.health << ' '
+                   << monster.attack << ' ' << monster.specialAttackChance << ' '
+                   << monster.specialAttackType << ' ' << formatTime(monster.appearanceTime) << '\n';
     }
 
     outputFile.close();
 }
+
 
 
 void SelectAllMonsters(vector<Monster>& readVector) {
@@ -279,11 +304,9 @@ void searchBySpecialAttackPercentage( vector<Monster>& database, double minSpeci
 void searchByAppearanceTime(vector<Monster>& monsters, time_t startTime, time_t endTime) {
     vector<Monster> result;
 
-    // Iterate through the monsters
     for (auto& monster : monsters) {
         // Check if the appearance time is within the specified range
         if (monster.appearanceTime >= startTime && monster.appearanceTime <= endTime) {
-            // Add the monster to the result vector
             result.push_back(monster);
             monster.printMonsterData();
         }
@@ -296,19 +319,15 @@ void searchByAppearanceTime(vector<Monster>& monsters, time_t startTime, time_t 
 
 
 void selectMonsterBy(vector<Monster>& localDatabase) {
-    vector<Monster> result;
-
-    // Prompt the user to choose the search criteria
     int choice;
     cout << "Choose search criteria:\n"
             "1. Search by name ending\n"
-            "2. Search by special attack type and chance\n"
+            "2. Search by special attack type\n"
             "3. Search by special attack chance\n"
             "4. Search by appearance time range\n"
             "Enter your choice: ";
     cin >> choice;
 
-    // Perform the search based on the user's choice
     switch (choice) {
         case 1: {
             searchByNameEnding(localDatabase, getStringInput("Enter the fragment of the name to search for: "));
@@ -323,8 +342,8 @@ void selectMonsterBy(vector<Monster>& localDatabase) {
             break;
         }
         case 4: {
-            time_t startTime = getTimeInput("Enter the start date and time (YYYY MM DD HH MM SS): ");
-            time_t endTime = getTimeInput("Enter the end date and time (YYYY MM DD HH MM SS): ");
+            time_t startTime = getTimeInput("");
+            time_t endTime = getTimeInput("");
             searchByAppearanceTime(localDatabase, startTime, endTime);
             break;
         }
@@ -344,7 +363,7 @@ void updateMonster(vector<Monster>& localDatabase) {
 
     int idModify = getIntInput("\nEnter the ID of the item you want to change: ", 0, 1000);
     int updateNumber;
-    bool found = false; // Initialize found variable outside the loop
+    bool found = false;
 
     for (auto& monster : localDatabase) {
         if (monster.id == idModify) {
@@ -364,26 +383,26 @@ void updateMonster(vector<Monster>& localDatabase) {
                 switch (updateNumber) {
                     case 0:
                         cout << "\n=== No changes made. ===\n";
-                        break; // Remove return statement here
+                        break;
                     case 1:
                         monster.name = getStringInput("Enter a new name: ");
-                        cout << "\n=== Changes submitted successfully ===\n";
+                        cout << "\n=== Monster name has been updated ===\n";
                         break;
                     case 2:
                         monster.health = getIntInput("Enter a new unit: ", 0, 50000);
-                        cout << "\n=== Changes submitted successfully ===\n";
+                        cout << "\n=== Monster health has been updated ===\n";
                         break;
                     case 3:
                         monster.attack = getIntInput("Enter a new monster attack: ", 0, 2000);
-                        cout << "\n=== Changes submitted successfully ===\n";
+                        cout << "\n=== Monster attack has been updated ===\n";
                         break;
                     case 4:
                         monster.specialAttackChance = getDoubleInput("Enter a new chance of special attack: ", 0.0, 1.0);
-                        cout << "\n=== Changes submitted successfully ===\n";
+                        cout << "\n=== Monster special Attack Chance has been updated  ===\n";
                         break;
                     case 5:
                         monster.specialAttackType = getStringInput("Enter a new type of special attack: ");
-                        cout << "\n=== Changes submitted successfully ===\n";
+                        cout << "\n=== Monster special Attack type has been updated  ===\n";
                         break;
                     default:
                         cout << "\n### Invalid operation! Please enter a valid operation number. ###\n";
@@ -437,12 +456,10 @@ void deleteMonster(vector<Monster>& localDatabase) {
     }
 }
 
-
 Monster benchmarkGenerationMonster() {
     Monster randomElement;
-    int randID = rand() % 1000 + 1;
-    randomElement.id = randID; // Increment count for each new Monster
- //   randomElement.id = ++randomElement.count; // Increment count for each new Monster
+    const int maxID = 1000; // Maximum ID value
+    randomElement.id = rand() % maxID + 1; // Generate random ID between 1 and maxID
     randomElement.name = "Monster_" + to_string(randomElement.id); // Random name based on id
     randomElement.health = rand() % 50001; // Random health between 0 and 50000
     randomElement.attack = rand() % 2001;   // Random attack between 0 and 2000
@@ -450,10 +467,13 @@ Monster benchmarkGenerationMonster() {
     // Sample special attack types
     string specialTypes[] = {"Fire", "Ice", "Poison", "Electric"};
     randomElement.specialAttackType = specialTypes[rand() % 4]; // Randomly choose a special attack type
-    randomElement.appearanceTime = time(nullptr); // Current time as appearance time
+
+    // Generate appearance time
+    randomElement.appearanceTime = time(nullptr) + (rand() % 86400);  // Add a random number of seconds (up to 1 day)
 
     return randomElement;
 }
+
 
 
 void localDatabase() {
@@ -463,34 +483,26 @@ void localDatabase() {
     int dbManagment;
 
     do {
-        cout << "\nHere you can manage the text database. Please select a operation: \n";
-        cout << "Please select a operation: \n"
+        cout << "\nHere you can manage the text database. Please select an option: \n"
                 "1. INSERT monster \n"
                 "2. Record database to the file\n"
                 "3. Restore database to the database buffer\n"
                 "4. SELECT all the monsters\n"
                 "5. SELECT monster by criteria\n"
                 "6. UPDATE monster\n"
-                "7. DELETE all database buffer or DELETE monster\n"
+                "7. DELETE all database buffer\n"
                 "0. Exit\n";
-        dbManagment = getIntInput("Please enter a number of operation: ", 0, 7);
+        dbManagment = getIntInput("Please enter a number of option: ", 0, 7);
 
         switch (dbManagment) {
             case 1:
-                insertMonster(localDb, false, false);
+                insertMonster(localDb, true);
                 break;
             case 2:
                 Database = localDb;
                 break;
             case 3:
-                int record;
-                record = getIntInput("\n1. Restore copy\n2. Create copy", 1, 2);
-                if (record == 1) {
-                    Database = tmp;
-                }
-                else {
-                    tmp = Database;
-                }
+                Database = tmp;
                 break;
             case 4:
                 SelectAllMonsters(localDb);
@@ -507,5 +519,4 @@ void localDatabase() {
         }
     } while (dbManagment != 0);
 
-    cout << "\n=== Vector Database has been deleted. ===\n";
 }

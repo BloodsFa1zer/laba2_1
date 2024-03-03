@@ -1,5 +1,6 @@
 #include <iostream>
 #include <string>
+#include <fstream>
 #include <sstream>
 #include <ctime>
 
@@ -8,12 +9,6 @@ using namespace std;
 
 #define txtDatabase "txt"
 #define binDatabase "binary"
-#define generateRandomElem true
-#define benchmark true
-#define findName true
-#define findNumOfUnit true
-#define findDate true
-#define ZeroValue 0
 
 
 #ifndef LAB2_1_STRUCT_H
@@ -29,15 +24,19 @@ double getDoubleInput(const string& prompt, double minValue, double maxValue);
 
 string getStringInput(const string& prompt);
 
+string formatTime(time_t t);
+
+
+
 struct Monster {
     int id;
- //   static int count; // Static variable to keep track of the number of monsters
     string name;
     int health;
     int attack;
     double specialAttackChance;
     string specialAttackType;
     time_t appearanceTime;
+
 
 
     void initializeFromUserInput() {
@@ -62,21 +61,24 @@ struct Monster {
         cout << "Monster information has been successfully recorded.\n";
     }
 
+
     void printMonsterData() {
         cout << "----------------------\n";
         cout << "ID: " << this->id << "\n";
         cout << "Monster Name: " << this->name << "\n";
         cout << "Health: " << this->health << "\n";
         cout << "Attack damage: " << this->attack << "\n";
-        cout << "Chance of special attack: " << this->specialAttackChance;
-        cout << "Special Attack Type: " << this->specialAttackChance;
-        cout << "Appearance Time: " << this->appearanceTime;
+        cout << "Chance of special attack: " << this->specialAttackChance << "\n";
+        cout << "Special Attack Type: " << this->specialAttackType << "\n";
+        cout << "Appearance Time: " << formatTime(this->appearanceTime) << endl;
         cout << "\n\n";
     }
 
 };
 
-void insertMonster(vector<Monster>& monsterCollection, bool isDemoMode, bool isBenchmark);
+Monster benchmarkGenerationMonster();
+
+void insertMonster(vector<Monster>& monsterCollection, bool isUserMode);
 void storeData(const string& filename,  vector<Monster>& monsterData, const string& DatabaseType);
 void loadData(const string& source, vector<Monster>& storage, const string& DatabaseType);
 void SelectAllMonsters(vector<Monster>& readVector);
@@ -87,5 +89,6 @@ void searchBySpecialAttackType(vector<Monster>& database, const string& specialA
 void searchByNameEnding(vector<Monster>& localDatabase, const string& fragment);
 void updateMonster(vector<Monster>& localDatabase);
 void deleteMonster(vector<Monster>& localDatabase);
+void loadingAnimation();
 
 

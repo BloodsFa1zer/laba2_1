@@ -28,7 +28,7 @@ void DatabaseManagement(const string& filename, const string& DatabaseType) {
 
     vector<Monster> tempStorage;
 
-    loadData(filename, tempStorage, txtDatabase);
+    storeData(filename, tempStorage, txtDatabase);
     int operation;
 
     cout << "\nHere you can manage the text database.\n";
@@ -49,13 +49,14 @@ void DatabaseManagement(const string& filename, const string& DatabaseType) {
             case 0:
                 break;
             case 1:
-                insertMonster(tempStorage, generateRandomElem, !benchmark);
+                insertMonster(tempStorage, true);
                 break;
             case 2:
+                loadData(filename, tempStorage, DatabaseType);
                 storeData(filename, tempStorage, DatabaseType);
                 break;
             case 3:
-                loadData(filename, tempStorage, DatabaseType);
+                storeData(filename, tempStorage, DatabaseType);
                 break;
             case 4:
                 SelectAllMonsters(tempStorage); // Select * From monster
@@ -65,13 +66,15 @@ void DatabaseManagement(const string& filename, const string& DatabaseType) {
                 break;
             case 6:
                 updateMonster(tempStorage);
+                cout << "!!! DO NOT FORGET TO SAVE DATABASE AFTER UPDATING MONSTER DATA !!!" << endl;
                 break;
             case 7:
                 deleteMonster(tempStorage);
+                cout << "!!! DO NOT FORGET TO SAVE DATABASE AFTER DELETING MONSTER !!!" << endl;
                 break;
         }
     } while (operation != 0);
 
-    cout << "\n=== Text database file '" << filename << "' has been created/updated! ===\n";
+    cout << "\n***** " << filename << " has been created/updated! *****\n";
     outputFile.close();
 }
